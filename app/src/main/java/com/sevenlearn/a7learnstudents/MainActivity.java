@@ -13,6 +13,13 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
+import java.util.Observer;
+
+import io.reactivex.SingleObserver;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -20,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
     private StudentAdapter studentAdapter;
     private RecyclerView recyclerView;
     private ApiService apiService;
+    private Disposable disposable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,21 +46,30 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        apiService.getStudents(new ApiService.StudentListCallback() {
-            @Override
-            public void onSuccess(List<Student> students) {
-                recyclerView=findViewById(R.id.rv_main_students);
-                recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this, RecyclerView.VERTICAL,false));
-                studentAdapter=new StudentAdapter(students);
-                recyclerView.setAdapter(studentAdapter);
-            }
+        apiService.getStudents()
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new SingleObserver<List<Student>>() {
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d) {
 
-            @Override
-            public void onError(Exception error) {
-                Toast.makeText(MainActivity.this,"خطای نامشخص",Toast.LENGTH_SHORT).show();
-            }
-        });
+                        disposable = d;
+                    }
 
+                    @Override
+                    public void onSuccess(@NonNull List<Student> students) {
+                        recyclerView = findViewById(R.id.rv_main_students);
+                        recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this, RecyclerView.VERTICAL, false));
+                        studentAdapter = new StudentAdapter(students);
+                        recyclerView.setAdapter(studentAdapter);
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e) {
+                        Toast.makeText(MainActivity.this, "خطای نامشخص", Toast.LENGTH_SHORT).show();
+
+                    }
+                });
     }
 
     @Override
@@ -70,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        disposable.dispose();
         apiService.cancel();
     }
 }
