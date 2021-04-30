@@ -10,6 +10,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.List;
 
+import io.reactivex.Single;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -47,53 +48,23 @@ public class ApiService {
         apiService=retrofit.create(RetrofitApiService.class);
     }
 
-    public void saveStudent(String firstName, String lastName, String course, int score, final SaveStudentCallback callback) {
+    public Single<Student> saveStudent(String firstName, String lastName, String course, int score) {
         JsonObject jsonObject=new JsonObject();
         jsonObject.addProperty("first_name",firstName);
         jsonObject.addProperty("last_name",lastName);
         jsonObject.addProperty("course",course);
         jsonObject.addProperty("score",score);
-        apiService.saveStudent(jsonObject).enqueue(new Callback<Student>() {
-            @Override
-            public void onResponse(Call<Student> call, Response<Student> response) {
-                callback.onSuccess(response.body());
-            }
 
-            @Override
-            public void onFailure(Call<Student> call, Throwable t) {
-                callback.onError(new Exception(t));
-            }
-        });
+        return apiService.saveStudent(jsonObject);
 
     }
 
-    public void getStudents(final StudentListCallback callback) {
-        apiService.getStudents()
-                .enqueue(new Callback<List<Student>>() {
-                    @Override
-                    public void onResponse(Call<List<Student>> call, Response<List<Student>> response) {
-                        callback.onSuccess(response.body());
-                    }
-
-                    @Override
-                    public void onFailure(Call<List<Student>> call, Throwable t) {
-                        callback.onError(new Exception(t));
-                    }
-                });
+    public Single<List<Student>> getStudents() {
+        return apiService.getStudents();
     }
 
     public void cancel(){
 
     }
 
-    public interface SaveStudentCallback {
-        void onSuccess(Student student);
-
-        void onError(Exception error);
-    }
-
-    public interface StudentListCallback{
-        void onSuccess(List<Student> students);
-        void onError(Exception error);
-    }
 }
