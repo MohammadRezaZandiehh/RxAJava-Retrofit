@@ -13,9 +13,15 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.textfield.TextInputEditText;
 
+import io.reactivex.SingleObserver;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
+
 public class AddNewStudentFormActivity extends AppCompatActivity {
     private static final String TAG = "AddNewStudentFormActivi";
     private ApiService apiService;
+    private Disposable disposable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,21 +52,29 @@ public class AddNewStudentFormActivity extends AppCompatActivity {
                     apiService.saveStudent(firstNameEt.getText().toString(),
                             lastNameEt.getText().toString(),
                             courseEt.getText().toString(),
-                            Integer.parseInt(scoreEt.getText().toString()),
-                            new ApiService.SaveStudentCallback() {
-                                @Override
-                                public void onSuccess(Student student) {
-                                    Intent intent=new Intent();
-                                    intent.putExtra("student",student);
-                                    setResult(Activity.RESULT_OK,intent);
-                                    finish();
-                                }
+                            Integer.parseInt(scoreEt.getText().toString()))
+                    .subscribeOn(Schedulers.newThread())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new SingleObserver<Student>() {
+                        @Override
+                        public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+                            disposable = d;
+                        }
 
-                                @Override
-                                public void onError(Exception error) {
-                                    Toast.makeText(AddNewStudentFormActivity.this,"خطای نامشخص",Toast.LENGTH_SHORT).show();
-                                }
-                            });
+                        @Override
+                        public void onSuccess(@io.reactivex.annotations.NonNull Student student) {
+                            Intent intent=new Intent();
+                            intent.putExtra("student",student);
+                            setResult(Activity.RESULT_OK,intent);
+                            finish();
+                        }
+
+                        @Override
+                        public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                            Toast.makeText(AddNewStudentFormActivity.this, "خطای نامشخص", Toast.LENGTH_SHORT).show();
+
+                        }
+                    });
                 }
             }
         });
@@ -78,6 +92,9 @@ public class AddNewStudentFormActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (disposable != null){
+            disposable.dispose();
+        }
         apiService.cancel();
     }
 }
